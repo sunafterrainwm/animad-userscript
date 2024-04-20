@@ -65,7 +65,6 @@
         const m3u8List = await fetch(src)
             .then((res) => res.text());
 
-        window.m3u8List = m3u8List;
         return parseM3u8(m3u8List);
     }
     const resolution1609 = ['640x360', '960x540', '1280x720', '1920x1080'];
