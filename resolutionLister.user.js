@@ -5,7 +5,7 @@
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
 // @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @version      2024-04-21
+// @version      2024-04-21.02
 // @author       sunafterrainwm
 // @licence      BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
@@ -69,7 +69,6 @@
     }
     const resolution1609 = ['640x360', '960x540', '1280x720', '1920x1080'];
     function parseM3u8(m3u8List) {
-        const m3u8ListArray = m3u8List.split('\n').filter(line => line.startsWith('#EXT-X-STREAM-INF:'));
         const resultList = [];
         const reg = /\bRESOLUTION=(\d+x(\d+))/g;
         let m;
