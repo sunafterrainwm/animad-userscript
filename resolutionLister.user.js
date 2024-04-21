@@ -5,11 +5,11 @@
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
 // @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @version      2024-04-21.02
+// @version      2024-04-21.03
 // @author       sunafterrainwm
 // @licence      BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
-// @icon         data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==
+// @icon         https://ani.gamer.com.tw/apple-touch-icon-72.jpg
 // @grant        none
 // @run-at       document-end
 // ==/UserScript==
@@ -29,7 +29,9 @@
     let deviceid = window.localStorage.getItem('ANIME_deviceid');
 
     async function loadDeviceid() {
-        const apiResult = await fetch('https://ani.gamer.com.tw/ajax/getdeviceid.php?deviceid=' + deviceid)
+        const apiResult = await fetch('https://ani.gamer.com.tw/ajax/getdeviceid.php?' + new URLSearchParams({
+            id: deviceid
+        }))
             .then((res) => res.json());
 
         if (apiResult.deviceid) {
@@ -55,7 +57,10 @@
     }
 
     async function getM3U8Url() {
-        const apiResult = await fetch('https://ani.gamer.com.tw/ajax/m3u8.php?sn=' + animeSn + '&device=' + deviceid)
+        const apiResult = await fetch('https://ani.gamer.com.tw/ajax/m3u8.php?' + new URLSearchParams({
+            sn: animeSn,
+            device: deviceid
+        }))
             .then((res) => res.json());
 
         return apiResult.src;
@@ -85,17 +90,32 @@
         return resultList;
     }
 
+    const $resolutions = $('<span>');
     function displayResolutions(resultList) {
-        $('.anime_info_detail').append(
-            $('<span>').text('｜'),
-            $('<span>').text('本番提供以下解析度：' + resultList.join('、'))
-        );
+        $resolutions.empty().text('本番提供以下解析度：' + resultList.join('、'));
     }
 
-    checkUserIsVip()
+    loadDeviceid()
+        .then(checkUserIsVip)
         .then((isVip) => {
             if (isVip) {
-                getM3U8Url().then(loadAndParseM3u8).then(displayResolutions);
+                $('.anime_info_detail').append(
+                    $('<span>').text('｜'),
+                    $resolutions.append(
+                        $('<a>')
+                            .attr({
+                                href: ''
+                            })
+                            .css({
+                                color: 'black'
+                            })
+                            .text('點此查看可觀看的所有解析度')
+                            .on('click', (e) => {
+                                e.preventDefault();
+                                getM3U8Url().then(loadAndParseM3u8).then(displayResolutions).catch((error) => alert('獲取解析度失敗：' + String(error)));
+                            })
+                    )
+                );
             }
         })
 })();
