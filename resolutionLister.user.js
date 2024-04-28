@@ -218,11 +218,11 @@
             if (!json.error) {
                 hook('onAjaxGetM3U8Url').fire(json.src);
             }
-            // xhook 攔截不到 videojs 的 m3u8 請求
-            // } else if (url.hostname === 'bahamut.akamaized.net' && url.pathname.endsWith('.m3u8')) {
-            //     const clonedResponse = response.clone();
-            //     const m3u8List = await clonedResponse.text();
-            //     hook('onAjaxGetM3U8List').fire(m3u8List);
+        // xhook 攔截不到 videojs 的 m3u8 請求
+        // } else if (url.hostname === 'bahamut.akamaized.net' && url.pathname.endsWith('.m3u8')) {
+        //     const clonedResponse = response.clone();
+        //     const m3u8List = await clonedResponse.text();
+        //     hook('onAjaxGetM3U8List').fire(m3u8List);
         }
     });
 
