@@ -5,9 +5,9 @@
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
 // @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @version      2024-04-28.01
+// @version      2024-05-19.01
 // @author       sunafterrainwm
-// @licence      BSD 3-Clause; https://opensource.org/license/bsd-3-clause
+// @licence      (C) 2024 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
 // @icon         https://ani.gamer.com.tw/apple-touch-icon-72.jpg
 // @require      https://unpkg.com/xhook@1.6.2/dist/xhook.min.js
@@ -23,7 +23,7 @@
     const ResolutionListerLoadFromPage = true; // 盡可能從頁面中攔截所需參數而非調用Api
 
     const thisUrl = new URL(window.location.href);
-    const animeSn = thisUrl.searchParams.get('sn');
+    let animeSn = thisUrl.searchParams.get('sn');
 
     let deviceid;
 
@@ -65,6 +65,9 @@
                     for (const func of hooks) {
                         func(data);
                     }
+                },
+                clear() {
+                    tmp = null;
                 }
             }
             return obj;
@@ -78,9 +81,10 @@
         });
     }
 
+    let animeDataProvided = window.animefun;
     async function loadSimpleBangumiResolution() {
-        if (window.animefun && ResolutionListerLoadFromPage) {
-            return window.animefun.quality;
+        if (animeDataProvided && ResolutionListerLoadFromPage) {
+            return animeDataProvided.quality;
         }
 
         const apiResult = await fetch('https://api.gamer.com.tw/mobile_app/anime/v4/video.php?' + new URLSearchParams({
@@ -124,6 +128,9 @@
 
     let cacheTokenData;
     async function checkUserIsVip() {
+        if (!window.User.Login.isLogin()) {
+            return false;
+        }
         if (ResolutionListerLoadFromPage && !cacheTokenData) {
             await Promise.race([
                 new Promise((resolve) => {
@@ -136,7 +143,7 @@
             ]);
         }
         if (cacheTokenData) {
-            return cacheTokenData.vip;
+            return cacheTokenData.error ? false : cacheTokenData.vip;
         }
         const apiResult = await fetch('/ajax/token.php?' + new URLSearchParams({
             adID: '0',
@@ -203,20 +210,38 @@
 
 
     xhook.after(async function (request, response) {
+        if (!response.ok) {
+            return;
+        }
         let url = new URL(request.url, window.location.origin);
-        if (url.hostname === 'ani.gamer.com.tw' && url.pathname === '/ajax/getdeviceid.php') {
-            setTimeout(loadDeviceidFromCache, 1);
-        } else if (url.hostname === 'ani.gamer.com.tw' && url.pathname === '/ajax/token.php') {
-            const clonedResponse = response.clone();
-            const json = await clonedResponse.json();
-            if (!json.error) {
-                hook('onAjaxGetToken').fire(json);
+        if (url.hostname === 'ani.gamer.com.tw') {
+            if (url.pathname === '/ajax/getdeviceid.php') {
+                setTimeout(loadDeviceidFromCache, 1);
+            } else if (url.pathname === '/ajax/token.php') {
+                const clonedResponse = response.clone();
+                if (clonedResponse.status === 200) {
+                    const json = await clonedResponse.json();
+                    hook('onAjaxGetToken').fire(json);
+                }
+            } else if (url.pathname === '/ajax/m3u8.php') {
+                const clonedResponse = response.clone();
+                const json = await clonedResponse.json();
+                if (!json.error) {
+                    hook('onAjaxGetM3U8Url').fire(json.src);
+                }
             }
-        } else if (url.hostname === 'ani.gamer.com.tw' && url.pathname === '/ajax/m3u8.php') {
-            const clonedResponse = response.clone();
-            const json = await clonedResponse.json();
-            if (!json.error) {
-                hook('onAjaxGetM3U8Url').fire(json.src);
+        } else if (url.hostname === 'api.gamer.com.tw') {
+            if (
+                url.pathname === '/anime/v1/video.php'
+                && url.searchParams.get('videoSn') !== animeSn
+            ) {
+                const clonedResponse = response.clone();
+                const json = await clonedResponse.json();
+                if (json.data.video) {
+                    animeDataProvided = json.data.video;
+                    animeSn = animeDataProvided.videoSn;
+                    init();
+                }
             }
         // xhook 攔截不到 videojs 的 m3u8 請求
         // } else if (url.hostname === 'bahamut.akamaized.net' && url.pathname.endsWith('.m3u8')) {
@@ -226,10 +251,14 @@
         }
     });
 
-    (async () => {
+    let $container;
+    async function init() {
         if (!$('#video-container').length) {
             return;
         }
+        $container?.remove();
+        $container = null;
+        hook('onAjaxGetM3U8Url').clear();
 
         let simpleResolution = await loadSimpleBangumiResolution();
         if (simpleResolution) {
@@ -248,13 +277,15 @@
         loadDeviceidFromCache();
         await loadDeviceid();
         const isVip = await checkUserIsVip();
-        $('.anime_info_detail').append(
-            $('<span>').text('｜'),
-            $resolutions
-                .append(
-                    $('<span>').text('上限解析度：' + simpleResolution)
-                )
-        );
+        $container = $('<span>')
+            .text('｜')
+            .append(
+                $resolutions
+                    .append(
+                        $('<span>').text('上限解析度：' + simpleResolution)
+                    )
+            );
+        $('.anime_info_detail').append($container);
         if (isVip) {
             $resolutions.append(
                 $('<span>').text('｜'),
@@ -272,5 +303,6 @@
                     })
             );
         }
-    })();
+    }
+    init();
 })();
