@@ -5,17 +5,18 @@
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
 // @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @version      2024-05-19.01
+// @version      2024-05-22.01
 // @author       sunafterrainwm
 // @licence      (C) 2024 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
 // @icon         https://ani.gamer.com.tw/apple-touch-icon-72.jpg
 // @require      https://unpkg.com/xhook@1.6.2/dist/xhook.min.js
+// @require      https://cdn.jsdelivr.net/npm/m3u8-parser@4.2.0/dist/m3u8-parser.min.js
 // @grant        none
 // @run-at       document-end
 // ==/UserScript==
 
-/* global $, xhook */
+/* global $, xhook, m3u8Parser */
 
 (function () {
     'use strict';
@@ -190,18 +191,26 @@
 
         return parseM3u8(m3u8List);
     }
-    const resolution1609 = ['640x360', '960x540', '1280x720', '1920x1080'];
+    const resolution1609 = {
+        360: 640, // 640x360
+        540: 960, // 960x540
+        720: 1280, // 1280x720
+        1080: 1920, // 1920x1080
+    };
     function parseM3u8(m3u8List) {
+        const parser = new m3u8Parser.Parser();
+        parser.push(m3u8List);
+        parser.end();
         const resultList = [];
-        const reg = /\bRESOLUTION=(\d+x(\d+))/g;
-        let m;
-        while (m = reg.exec(m3u8List)) {
-            const [, wh, h] = m;
-            const r = h + 'p';
-            if (resolution1609.includes(wh)) {
-                resultList.push(r);
+        for (const pl of parser.manifest.playlists) {
+            const resolution = pl.attributes.RESOLUTION;
+            if (!resolution) {
+                continue;
+            }
+            if (resolution1609[resolution.height] === resolution.width) {
+                resultList.push(`${resolution.height}p`);
             } else {
-                resultList.push(`${r} (${wh})`);
+                resultList.push(`${resolution.height}p (${resolution.width}x${resolution.height})`);
             }
         }
 
