@@ -5,7 +5,7 @@
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
 // @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @version      2024-05-22.01
+// @version      2024-06-20.01
 // @author       sunafterrainwm
 // @licence      (C) 2024 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
@@ -268,9 +268,10 @@
         $container?.remove();
         $container = null;
         hook('onAjaxGetM3U8Url').clear();
+        $('.anime-option').css('width', '100%');
 
         let simpleResolution = await loadSimpleBangumiResolution();
-        if (simpleResolution) {
+        if (simpleResolution === 'FHD') {
             simpleResolution = '1080p';
         } else if (simpleResolution === '') {
             simpleResolution = '🗑未知';
