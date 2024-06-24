@@ -5,7 +5,7 @@
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
 // @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @version      2024-06-20.01
+// @version      2024-06-24.01
 // @author       sunafterrainwm
 // @licence      (C) 2024 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
@@ -164,18 +164,25 @@
     }
 
     async function getM3U8Url() {
-        let prevM3U8Url;
-        hook('onAjaxGetM3U8Url').once((m3u8Url) => {
-            prevM3U8Url = m3u8Url;
-        });
-        if (prevM3U8Url) {
-            return prevM3U8Url;
+        if (ResolutionListerLoadFromPage) {
+            let prevM3U8Url;
+            hook('onAjaxGetM3U8Url').once((m3u8Url) => {
+                prevM3U8Url = m3u8Url;
+            });
+            if (prevM3U8Url) {
+                return prevM3U8Url;
+            }
         }
+
         const apiResult = await fetch('/ajax/m3u8.php?' + new URLSearchParams({
             sn: animeSn,
             device: deviceid
         }))
             .then((res) => res.json());
+
+        if (apiResult.error) {
+            throw new Error(apiResult.error.message ?? JSON.stringify(apiResult));
+        }
 
         return apiResult.src;
     }
@@ -191,6 +198,7 @@
 
         return parseM3u8(m3u8List);
     }
+
     const resolution1609 = {
         360: 640, // 640x360
         540: 960, // 960x540
@@ -217,48 +225,49 @@
         return resultList;
     }
 
-
-    xhook.after(async function (request, response) {
-        if (!response.ok) {
-            return;
-        }
-        let url = new URL(request.url, window.location.origin);
-        if (url.hostname === 'ani.gamer.com.tw') {
-            if (url.pathname === '/ajax/getdeviceid.php') {
-                setTimeout(loadDeviceidFromCache, 1);
-            } else if (url.pathname === '/ajax/token.php') {
-                const clonedResponse = response.clone();
-                if (clonedResponse.status === 200) {
+    if (ResolutionListerLoadFromPage) {
+        xhook.after(async function (request, response) {
+            if (!response.ok) {
+                return;
+            }
+            let url = new URL(request.url, window.location.origin);
+            if (url.hostname === 'ani.gamer.com.tw') {
+                if (url.pathname === '/ajax/getdeviceid.php') {
+                    setTimeout(loadDeviceidFromCache, 1);
+                } else if (url.pathname === '/ajax/token.php') {
+                    if (response.status === 200) {
+                        const clonedResponse = response.clone();
+                        const json = await clonedResponse.json();
+                        hook('onAjaxGetToken').fire(json);
+                    }
+                } else if (url.pathname === '/ajax/m3u8.php') {
+                    if (response.status === 200) {
+                        const clonedResponse = response.clone();
+                        const json = await clonedResponse.json();
+                        hook('onAjaxGetM3U8Url').fire(json.src);
+                    }
+                }
+            } else if (url.hostname === 'api.gamer.com.tw') {
+                if (
+                    url.pathname === '/anime/v1/video.php'
+                    && url.searchParams.get('videoSn') !== animeSn
+                ) {
+                    const clonedResponse = response.clone();
                     const json = await clonedResponse.json();
-                    hook('onAjaxGetToken').fire(json);
+                    if (json.data.video) {
+                        animeDataProvided = json.data.video;
+                        animeSn = animeDataProvided.videoSn;
+                        init();
+                    }
                 }
-            } else if (url.pathname === '/ajax/m3u8.php') {
-                const clonedResponse = response.clone();
-                const json = await clonedResponse.json();
-                if (!json.error) {
-                    hook('onAjaxGetM3U8Url').fire(json.src);
-                }
+                // xhook 攔截不到 videojs 的 m3u8 請求
+                // } else if (url.hostname === 'bahamut.akamaized.net' && url.pathname.endsWith('.m3u8')) {
+                //     const clonedResponse = response.clone();
+                //     const m3u8List = await clonedResponse.text();
+                //     hook('onAjaxGetM3U8List').fire(m3u8List);
             }
-        } else if (url.hostname === 'api.gamer.com.tw') {
-            if (
-                url.pathname === '/anime/v1/video.php'
-                && url.searchParams.get('videoSn') !== animeSn
-            ) {
-                const clonedResponse = response.clone();
-                const json = await clonedResponse.json();
-                if (json.data.video) {
-                    animeDataProvided = json.data.video;
-                    animeSn = animeDataProvided.videoSn;
-                    init();
-                }
-            }
-        // xhook 攔截不到 videojs 的 m3u8 請求
-        // } else if (url.hostname === 'bahamut.akamaized.net' && url.pathname.endsWith('.m3u8')) {
-        //     const clonedResponse = response.clone();
-        //     const m3u8List = await clonedResponse.text();
-        //     hook('onAjaxGetM3U8List').fire(m3u8List);
-        }
-    });
+        });
+    }
 
     let $container;
     async function init() {
