@@ -5,7 +5,7 @@
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
 // @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/animadScreenshot.user.js
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/animadScreenshot.user.js
-// @version      2024-06-20.01
+// @version      2024-08-24.01
 // @author       sunafterrainwm
 // @licence      (C) 2024 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
@@ -59,12 +59,14 @@
     height: 100%;
     top: 0px;
     z-index: 10;
+    user-select: none;
 }
 
 #${classPrefix}wrapper {
     position: relative;
     background: var(--card-bg);
     margin: 0;
+    user-select: none;
 }
 
 #${classPrefix}buttonList, #${classPrefix}screenshotList {
@@ -201,6 +203,12 @@
     class ImageFile {
         static images = [];
 
+        static currentFile = null;
+        static preventAutoHide = false;
+
+        currentOverHash = Symbol(Math.random());
+        lastOverHash = null;
+
         initialFromScreenshot() {
             return new Promise((resolve) => {
                 const canvas = document.createElement('canvas');
@@ -248,16 +256,42 @@
         }
 
         unref() {
+            this.onmouseout(true);
             ImageFile.remove(this);
             URL.revokeObjectURL(this.blobUrl);
         }
 
-        onmouseover() {
+        onclick() {
+            if (ImageFile.currentFile === this) {
+                if (!this.lastOverHash || this.lastOverHash !== this.currentOverHash) {
+                    this.onmouseout(true);
+                } else {
+                    ImageFile.preventAutoHide = true;
+                }
+            } else {
+                this.onmouseover(true);
+            }
+        }
+
+        onmouseover(force = false) {
+            if (!force) {
+                this.currentOverHash = Symbol(Math.random());
+                if (ImageFile.currentFile) {
+                    return;
+                }
+                this.lastOverHash = this.currentOverHash;
+            } else {
+                ImageFile.preventAutoHide = true;
+                this.currentOverHash = this.lastOverHash = null;
+            }
+
+            ImageFile.currentFile = this;
             $imageDisplay.show().css('content', `url(${this.blobUrl})`);
         }
 
-        onmouseout() {
-            ImageFile.onmouseout();
+        onmouseout(force = false) {
+            this.currentOverHash = null;
+            ImageFile.onmouseout(force);
         }
 
         makeElement() {
@@ -276,6 +310,9 @@
                 })
                 .append(
                     $('<a>')
+                        .on('click', (e) => {
+                            e.stopPropagation();
+                        })
                         .attr({
                             class: `${classPrefix}screenshotBoxTool ${classPrefix}screenshotBoxTool-save`,
                             href: this.blobUrl,
@@ -288,6 +325,7 @@
                         })
                         .on('click', (e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             this.copy();
                         }),
                     $('<span>')
@@ -296,6 +334,7 @@
                         })
                         .on('click', (e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             this.unref();
                             this.onmouseout();
                         }),
@@ -308,6 +347,7 @@
                         })
                         .on('click', (e) => {
                             e.preventDefault();
+                            e.stopPropagation();
                             video.currentTime = this.screenshotTime;
                             this.onmouseout();
                         })
@@ -325,12 +365,21 @@
                     e.preventDefault();
                     this.onmouseout();
                 })
+                .on('click', (e) => {
+                    e.preventDefault();
+                    this.onclick();
+                })
                 .append($image, $tools);
             return $element;
         }
 
-        static onmouseout() {
+        static onmouseout(force = false) {
+            if (ImageFile.preventAutoHide && !force) {
+                return;
+            }
             $imageDisplay.hide().css('content', '');
+            ImageFile.preventAutoHide = false;
+            ImageFile.currentFile = null;
         }
 
         static toPng(imageBlobUrl) {
@@ -412,6 +461,12 @@
         }
     }
 
+    $imageDisplay
+        .on('click', (e) => {
+            e.preventDefault();
+            ImageFile.onmouseout(true);
+        });
+
     const $buttonList = $('<div>')
         .attr({
             id: `${classPrefix}buttonList`
@@ -463,10 +518,5 @@
         })
         .append($buttonList)
         .append($screenshotList)
-        .insertBefore($('.anime-title'))
-        .on('mouseleave', (e) => {
-            e.preventDefault();
-            // Force clear status
-            ImageFile.onmouseout();
-        });
+        .insertBefore($('.anime-title'));
 })();
