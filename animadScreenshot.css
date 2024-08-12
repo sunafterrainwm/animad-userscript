@@ -1,0 +1,17 @@
+@font-face {
+    font-family: 'Noto Sans';
+    font-style: normal;
+    font-weight: 700;
+    font-stretch: normal;
+    font-display: swap;
+    src: url(resources/NotoSans-Bold.woff2) format('woff2') url(resources/NotoSans-Bold.ttf) format('ttf');
+}
+
+@font-face {
+    font-family: 'Noto Sans CJK TC';
+    font-style: normal;
+    font-weight: 700;
+    font-stretch: normal;
+    font-display: swap;
+    src: url(resources/NotoSansCJKTC-Bold.woff2) format('woff2') url(resources/NotoSansCJKTC-Bold.otf) format('otf');
+}
