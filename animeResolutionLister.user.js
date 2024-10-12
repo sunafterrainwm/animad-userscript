@@ -3,9 +3,9 @@
 // @description  不用開始播放就可以知道該部番劇能播放的解析度！註：必須要有動畫瘋會員才能顯示完整列表
 // @namespace    https://github.com/sunafterrainwm/animad-userscript
 // @supportURL   https://github.com/sunafterrainwm/animad-userscript/issues
-// @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/resolutionLister.user.js
-// @version      2024-06-24.01
+// @downloadURL  https://github.com/sunafterrainwm/animad-userscript/raw/master/animeResolutionLister.user.js
+// @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/animeResolutionLister.user.js
+// @version      2024-10-12.01
 // @author       sunafterrainwm
 // @licence      (C) 2024 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
@@ -24,7 +24,7 @@
     const ResolutionListerLoadFromPage = true; // 盡可能從頁面中攔截所需參數而非調用Api
 
     const thisUrl = new URL(window.location.href);
-    let animeSn = thisUrl.searchParams.get('sn');
+    let videoSn = thisUrl.searchParams.get('sn');
 
     let deviceid;
 
@@ -89,7 +89,7 @@
         }
 
         const apiResult = await fetch('https://api.gamer.com.tw/mobile_app/anime/v4/video.php?' + new URLSearchParams({
-            sn: animeSn
+            sn: videoSn
         }))
             .then((res) => res.json());
 
@@ -148,7 +148,7 @@
         }
         const apiResult = await fetch('/ajax/token.php?' + new URLSearchParams({
             adID: '0',
-            sn: animeSn,
+            sn: videoSn,
             device: deviceid,
             hash: Math.random().toString(16).slice(2, 14).padStart(12, '0')
         }))
@@ -175,7 +175,7 @@
         }
 
         const apiResult = await fetch('/ajax/m3u8.php?' + new URLSearchParams({
-            sn: animeSn,
+            sn: videoSn,
             device: deviceid
         }))
             .then((res) => res.json());
@@ -250,13 +250,13 @@
             } else if (url.hostname === 'api.gamer.com.tw') {
                 if (
                     url.pathname === '/anime/v1/video.php'
-                    && url.searchParams.get('videoSn') !== animeSn
+                    && url.searchParams.get('videoSn') !== videoSn
                 ) {
                     const clonedResponse = response.clone();
                     const json = await clonedResponse.json();
                     if (json.data.video) {
                         animeDataProvided = json.data.video;
-                        animeSn = animeDataProvided.videoSn;
+                        videoSn = animeDataProvided.videoSn;
                         init();
                     }
                 }
