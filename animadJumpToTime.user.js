@@ -6,7 +6,7 @@
 // @updateURL    https://github.com/sunafterrainwm/animad-userscript/raw/master/animadJumpToTime.user.js
 // @version      2025-11-22.01
 // @author       sunafterrainwm
-// @licence      (C) 2024 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
+// @licence      (C) 2025 sunafterrainwm; BSD 3-Clause; https://opensource.org/license/bsd-3-clause
 // @match        https://ani.gamer.com.tw/animeVideo.php?*
 // @icon         https://ani.gamer.com.tw/apple-touch-icon-72.jpg
 // @grant        none
